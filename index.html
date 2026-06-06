@@ -3,376 +3,722 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimalist Beat Sequencer</title>
+    <title>BeatBox - Demo Studio</title>
     <style>
         :root {
-            --bg-color: #121212;
-            --panel-bg: #1e1e1e;
-            --primary-color: #00bcd4;
-            --text-color: #ffffff;
-            --cell-empty: #333333;
-            --cell-kick: #ff4081;
-            --cell-snare: #7c4dff;
-            --cell-hihat: #00e676;
-            --cell-current: #ffeb3b;
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --panel-border: #30363d;
+            --primary-color: #58a6ff;
+            --danger-color: #f85149;
+            --success-color: #2ea043;
+            --text-color: #c9d1d9;
+            --cell-empty: #21262d;
+            --cell-kick: #ff7b72;
+            --cell-snare: #d2a8ff;
+            --cell-hihat: #7ee787;
+            --cell-current: #f2cc60;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
             padding: 20px;
-            box-sizing: border-box;
+            margin: 0;
+            min-height: 100vh;
         }
 
         h1 {
-            font-weight: 300;
+            font-weight: 800;
             letter-spacing: 2px;
+            margin-bottom: 10px;
+            color: #ffffff;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            color: #8b949e;
             margin-bottom: 30px;
+            font-size: 14px;
         }
 
-        .sequencer-container {
+        .studio-container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
             background-color: var(--panel-bg);
-            padding: 30px;
+            border: 1px solid var(--panel-border);
             border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 25px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
 
-        .controls {
+        .master-controls {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #333;
-        }
-
-        button#playBtn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-        }
-
-        button#playBtn:active {
-            transform: scale(0.95);
-        }
-
-        button#playBtn.playing {
-            background-color: #f44336;
-        }
-
-        .tempo-control {
-            display: flex;
-            align-items: center;
+            flex-wrap: wrap;
             gap: 15px;
         }
 
-        input[type=range] {
-            cursor: pointer;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: auto repeat(16, 1fr);
-            gap: 8px;
-            align-items: center;
-        }
-
-        .row-label {
-            font-weight: bold;
-            text-align: right;
-            padding-right: 15px;
-            color: #aaa;
-            text-transform: uppercase;
+        button {
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
             font-size: 14px;
-            letter-spacing: 1px;
-        }
-
-        .cell {
-            width: 35px;
-            height: 35px;
-            background-color: var(--cell-empty);
+            font-weight: 600;
             border-radius: 6px;
             cursor: pointer;
-            transition: background-color 0.1s, transform 0.1s;
+            transition: background-color 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .cell:hover {
-            transform: scale(1.1);
+        button:active { transform: scale(0.97); }
+        button.playing { background-color: var(--danger-color); }
+        button.recording { background-color: var(--danger-color); animation: pulse 1s infinite; }
+        button.action-btn { background-color: var(--success-color); }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
         }
 
-        /* Active states for different instruments */
-        .cell[data-instrument="kick"].active { background-color: var(--cell-kick); }
-        .cell[data-instrument="snare"].active { background-color: var(--cell-snare); }
-        .cell[data-instrument="hihat"].active { background-color: var(--cell-hihat); }
-
-        /* Highlight for the current playing beat */
-        .cell.current {
-            border: 2px solid var(--cell-current);
-            box-sizing: border-box;
-            box-shadow: 0 0 10px var(--cell-current);
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
         }
 
-        /* Visual dividers for every 4th beat (to help with 4/4 timing) */
-        .cell:nth-child(4n + 2) {
-            margin-right: 8px;
+        /* Sequencer Grid Styles */
+        .track-row {
+            display: grid;
+            grid-template-columns: 200px repeat(16, 1fr) 40px;
+            gap: 6px;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--panel-border);
         }
+
+        .track-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding-right: 15px;
+        }
+
+        .track-name {
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            color: #8b949e;
+        }
+
+        .mini-slider-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #aaa;
+        }
+
+        .mini-slider-group input { width: 60px; }
+
+        .cell {
+            aspect-ratio: 1;
+            background-color: var(--cell-empty);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+
+        .cell:hover { filter: brightness(1.3); }
+        .cell[data-type="kick"].active { background-color: var(--cell-kick); box-shadow: 0 0 8px var(--cell-kick); }
+        .cell[data-type="snare"].active { background-color: var(--cell-snare); box-shadow: 0 0 8px var(--cell-snare); }
+        .cell[data-type="hihat"].active { background-color: var(--cell-hihat); box-shadow: 0 0 8px var(--cell-hihat); }
+        
+        .cell.current { border: 2px solid var(--cell-current); transform: scale(1.1); z-index: 2; }
+        .cell:nth-child(4n + 2) { margin-right: 6px; }
+
+        .delete-btn {
+            background: transparent;
+            color: var(--danger-color);
+            padding: 5px;
+            border: 1px solid var(--panel-border);
+        }
+        .delete-btn:hover { background: var(--danger-color); color: white; }
+
+        .add-track-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        select {
+            background-color: var(--bg-color);
+            color: white;
+            border: 1px solid var(--panel-border);
+            padding: 8px;
+            border-radius: 6px;
+        }
+
+        /* Voice Layers Styles */
+        .voice-layer {
+            background-color: var(--bg-color);
+            border: 1px solid var(--panel-border);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .voice-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-grow: 1;
+        }
+        
+        input[type=range] { cursor: pointer; accent-color: var(--primary-color); }
+
     </style>
 </head>
 <body>
 
-    <h1>BEAT SEQUENCER</h1>
+    <h1>BEATBOX</h1>
+    <div class="subtitle">Idea Scratchpad & Demo Studio</div>
 
-    <div class="sequencer-container">
-        <div class="controls">
-            <button id="playBtn">▶ Play</button>
+    <div class="studio-container">
+        
+        <div class="panel master-controls">
+            <button id="masterPlayBtn">▶ Play Demo</button>
             
-            <div class="tempo-control">
-                <label for="bpmSlider">Tempo: <span id="bpmDisplay">120</span> BPM</label>
+            <div class="control-group">
+                <label>Tempo: <span id="bpmDisplay">120</span></label>
                 <input type="range" id="bpmSlider" min="60" max="200" value="120">
+            </div>
+
+            <button id="downloadMixBtn" class="action-btn">⬇ Download Mix (WAV)</button>
+        </div>
+
+        <div class="panel">
+            <h3>Drum Machine</h3>
+            <div id="sequencer-grid">
+                </div>
+            
+            <div class="add-track-area">
+                <select id="newTrackType">
+                    <option value="kick">Kick Drum</option>
+                    <option value="snare">Snare Drum</option>
+                    <option value="hihat">Hi-Hat</option>
+                </select>
+                <button id="addTrackBtn">+ Add Instrument Line</button>
             </div>
         </div>
 
-        <div class="grid" id="grid">
+        <div class="panel">
+            <h3>Vocal Layers</h3>
+            <p style="font-size: 12px; color: #aaa; margin-top: -10px; margin-bottom: 15px;">Note: Wear headphones when recording to prevent microphone feedback. Recording will start from the beginning of the beat.</p>
+            
+            <div class="master-controls" style="margin-bottom: 20px;">
+                <button id="recordVocalBtn" style="background-color: #d73a49;">🎤 Record New Vocal Layer</button>
+                <span id="recordingStatus" style="color: #d73a49; display: none; font-weight: bold; animation: pulse 1s infinite;">RECORDING... Click stop to save.</span>
             </div>
+
+            <div id="vocal-layers-container">
+                </div>
+        </div>
+
     </div>
 
     <script>
-        // --- UI Setup ---
-        const grid = document.getElementById('grid');
-        const instruments = ['hihat', 'snare', 'kick']; // Ordered top to bottom
-        const steps = 16;
-        
-        // Generate the grid HTML
-        instruments.forEach(inst => {
-            // Add row label
-            const label = document.createElement('div');
-            label.className = 'row-label';
-            label.innerText = inst;
-            grid.appendChild(label);
-
-            // Add 16 clickable steps for this instrument
-            for (let i = 0; i < steps; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.instrument = inst;
-                cell.dataset.step = i;
-                cell.id = `cell-${inst}-${i}`;
-                
-                // Toggle active state on click
-                cell.addEventListener('click', () => {
-                    cell.classList.toggle('active');
-                });
-                
-                grid.appendChild(cell);
-            }
-        });
-
-        // --- Audio Engine Setup ---
+        // --- CORE STATE ---
         let audioCtx;
+        let masterGain;
+        let mixDestination; // Used for downloading the final mix
+        let isPlaying = false;
+        let tempo = 120;
+        let currentStep = 0;
+        let nextNoteTime = 0.0;
+        let timerID;
+        let trackIdCounter = 0;
+        let voiceIdCounter = 0;
+        
+        const lookahead = 25.0;
+        const scheduleAheadTime = 0.1;
+        const steps = 16;
         let noiseBuffer;
 
-        // Initialize Audio Context (must be done after user interacts with the page)
+        // Arrays holding our musical data
+        let drumTracks = []; 
+        let voiceLayers = []; 
+
+        // --- DOM ELEMENTS ---
+        const gridContainer = document.getElementById('sequencer-grid');
+        const vocalContainer = document.getElementById('vocal-layers-container');
+        const playBtn = document.getElementById('masterPlayBtn');
+        const bpmSlider = document.getElementById('bpmSlider');
+        const bpmDisplay = document.getElementById('bpmDisplay');
+        const addTrackBtn = document.getElementById('addTrackBtn');
+        const newTrackType = document.getElementById('newTrackType');
+        const recordVocalBtn = document.getElementById('recordVocalBtn');
+        const recordingStatus = document.getElementById('recordingStatus');
+        const downloadMixBtn = document.getElementById('downloadMixBtn');
+
+        // --- AUDIO INITIALIZATION ---
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Set up main routing
+                masterGain = audioCtx.createGain();
+                masterGain.connect(audioCtx.destination);
+                
+                // Set up mixdown routing (for downloading)
+                mixDestination = audioCtx.createMediaStreamDestination();
+                masterGain.connect(mixDestination);
+
                 createNoiseBuffer();
             }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        // We need white noise for the Snare and Hi-Hat to sound realistic
         function createNoiseBuffer() {
-            const bufferSize = audioCtx.sampleRate * 2; // 2 seconds of noise
+            const bufferSize = audioCtx.sampleRate * 2;
             noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
             const output = noiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) {
-                output[i] = Math.random() * 2 - 1; // White noise
+            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+        }
+
+        // --- DRUM TRACK MANAGEMENT ---
+        function createDrumTrack(type, presetPattern = []) {
+            const trackId = `track-${trackIdCounter++}`;
+            const track = {
+                id: trackId,
+                type: type,
+                pitchMultiplier: 1.0, // 1 is normal, <1 is lower, >1 is higher
+                pattern: Array(steps).fill(false)
+            };
+
+            // Apply preset pattern if provided
+            presetPattern.forEach(stepIndex => {
+                if(stepIndex < steps) track.pattern[stepIndex] = true;
+            });
+
+            drumTracks.push(track);
+            renderDrumTracks();
+        }
+
+        function deleteDrumTrack(id) {
+            drumTracks = drumTracks.filter(t => t.id !== id);
+            renderDrumTracks();
+        }
+
+        function renderDrumTracks() {
+            gridContainer.innerHTML = '';
+            drumTracks.forEach(track => {
+                const row = document.createElement('div');
+                row.className = 'track-row';
+                
+                // Track Controls (Name & Pitch)
+                const controls = document.createElement('div');
+                controls.className = 'track-controls';
+                controls.innerHTML = `
+                    <div class="track-name">${track.type}</div>
+                    <div class="mini-slider-group">
+                        Pitch: 
+                        <input type="range" min="0.5" max="2" step="0.1" value="${track.pitchMultiplier}" 
+                               onchange="updateTrackPitch('${track.id}', this.value)">
+                    </div>
+                `;
+                row.appendChild(controls);
+
+                // Grid Cells
+                for (let i = 0; i < steps; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${track.pattern[i] ? 'active' : ''}`;
+                    cell.dataset.type = track.type;
+                    cell.id = `cell-${track.id}-${i}`;
+                    
+                    cell.addEventListener('click', () => {
+                        track.pattern[i] = !track.pattern[i];
+                        cell.classList.toggle('active');
+                    });
+                    row.appendChild(cell);
+                }
+
+                // Delete Button
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.innerHTML = '✖';
+                delBtn.onclick = () => deleteDrumTrack(track.id);
+                row.appendChild(delBtn);
+
+                gridContainer.appendChild(row);
+            });
+        }
+
+        window.updateTrackPitch = (trackId, value) => {
+            const track = drumTracks.find(t => t.id === trackId);
+            if(track) track.pitchMultiplier = parseFloat(value);
+        };
+
+        addTrackBtn.addEventListener('click', () => {
+            createDrumTrack(newTrackType.value);
+        });
+
+        // --- SYNTHESIZERS ---
+        function playDrum(type, pitchMult, time) {
+            if (type === 'kick') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(masterGain);
+                
+                osc.frequency.setValueAtTime(150 * pitchMult, time);
+                osc.frequency.exponentialRampToValueAtTime(0.001, time + 0.5);
+                gain.gain.setValueAtTime(1, time);
+                gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
+                
+                osc.start(time);
+                osc.stop(time + 0.5);
+            } 
+            else if (type === 'snare') {
+                // Noise snap
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 1000 * pitchMult; // pitch affects snap color
+                const nGain = audioCtx.createGain();
+                
+                nGain.gain.setValueAtTime(1, time);
+                nGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+                noise.connect(filter).connect(nGain).connect(masterGain);
+                noise.start(time); noise.stop(time + 0.2);
+                
+                // Body
+                const osc = audioCtx.createOscillator();
+                const oGain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.connect(oGain).connect(masterGain);
+                osc.frequency.setValueAtTime(250 * pitchMult, time);
+                oGain.gain.setValueAtTime(0.7, time);
+                oGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+                osc.start(time); osc.stop(time + 0.2);
+            }
+            else if (type === 'hihat') {
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = noiseBuffer;
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.value = 7000 * pitchMult;
+                const gain = audioCtx.createGain();
+                
+                gain.gain.setValueAtTime(0.5, time);
+                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+                noise.connect(filter).connect(gain).connect(masterGain);
+                noise.start(time); noise.stop(time + 0.05);
             }
         }
 
-        // --- Sound Synthesizers ---
-        
-        function playKick(time) {
-            const osc = audioCtx.createOscillator();
+        // --- VOCAL RECORDING & LAYERING ---
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecordingVocal = false;
+
+        async function startVocalRecording() {
+            initAudio();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const arrayBuffer = await audioBlob.arrayBuffer();
+                    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                    addVocalLayer(audioBuffer);
+                    
+                    // Stop microphone tracks to free resources
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                // Auto-start playback so user can sing along
+                if (!isPlaying) togglePlayback();
+                
+                // We reset sequencer to step 0 to ensure vocal is synced to start of loop
+                currentStep = 0;
+                nextNoteTime = audioCtx.currentTime + 0.1;
+
+                mediaRecorder.start();
+                isRecordingVocal = true;
+                recordVocalBtn.innerHTML = "⏹ Stop Recording";
+                recordingStatus.style.display = "inline";
+
+            } catch (err) {
+                alert("Microphone access denied or not available. " + err);
+            }
+        }
+
+        function stopVocalRecording() {
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+            isRecordingVocal = false;
+            recordVocalBtn.innerHTML = "🎤 Record New Vocal Layer";
+            recordingStatus.style.display = "none";
+        }
+
+        recordVocalBtn.addEventListener('click', () => {
+            if (isRecordingVocal) stopVocalRecording();
+            else startVocalRecording();
+        });
+
+        function addVocalLayer(buffer) {
+            const voiceId = `voice-${voiceIdCounter++}`;
+            
+            // Set up audio nodes for this layer
             const gainNode = audioCtx.createGain();
-            
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            // A kick is a low frequency that drops very quickly
-            osc.frequency.setValueAtTime(150, time);
-            osc.frequency.exponentialRampToValueAtTime(0.001, time + 0.5);
-            
-            gainNode.gain.setValueAtTime(1, time);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
-            
-            osc.start(time);
-            osc.stop(time + 0.5);
+            gainNode.gain.value = 1.0;
+
+            const delayNode = audioCtx.createDelay(5.0); // max 5 sec delay
+            delayNode.delayTime.value = 0; // default no echo
+            const feedbackGain = audioCtx.createGain();
+            feedbackGain.gain.value = 0.4; // amount of echo repeats
+
+            // Routing: Source -> Gain -> Master
+            //                -> Delay -> Feedback -> Delay
+            //                -> Master
+            delayNode.connect(feedbackGain);
+            feedbackGain.connect(delayNode);
+            delayNode.connect(masterGain);
+            gainNode.connect(masterGain);
+            gainNode.connect(delayNode); // feed into echo
+
+            const layer = {
+                id: voiceId,
+                buffer: buffer,
+                speedPitch: 1.0,
+                volume: 1.0,
+                gainNode: gainNode,
+                delayNode: delayNode,
+                activeSources: [] // Track playing sources to stop them
+            };
+            voiceLayers.push(layer);
+            renderVocalLayers();
         }
 
-        function playSnare(time) {
-            // Snare part 1: The "snap" (Noise)
-            const noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = noiseBuffer;
-            const noiseFilter = audioCtx.createBiquadFilter();
-            noiseFilter.type = 'highpass';
-            noiseFilter.frequency.value = 1000;
-            const noiseEnvelope = audioCtx.createGain();
-            
-            noiseEnvelope.gain.setValueAtTime(1, time);
-            noiseEnvelope.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-            
-            noiseSource.connect(noiseFilter);
-            noiseFilter.connect(noiseEnvelope);
-            noiseEnvelope.connect(audioCtx.destination);
-            noiseSource.start(time);
-            noiseSource.stop(time + 0.2);
-            
-            // Snare part 2: The "body" (Oscillator)
-            const osc = audioCtx.createOscillator();
-            const oscEnvelope = audioCtx.createGain();
-            osc.type = 'triangle';
-            
-            osc.connect(oscEnvelope);
-            oscEnvelope.connect(audioCtx.destination);
-            
-            osc.frequency.setValueAtTime(250, time);
-            oscEnvelope.gain.setValueAtTime(0.7, time);
-            oscEnvelope.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-            
-            osc.start(time);
-            osc.stop(time + 0.2);
-        }
-
-        function playHiHat(time) {
-            const noiseSource = audioCtx.createBufferSource();
-            noiseSource.buffer = noiseBuffer;
-            
-            // Highpass filter makes the noise sound "tinny" like a cymbal
-            const noiseFilter = audioCtx.createBiquadFilter();
-            noiseFilter.type = 'highpass';
-            noiseFilter.frequency.value = 7000;
-            
-            const noiseEnvelope = audioCtx.createGain();
-            noiseEnvelope.gain.setValueAtTime(0.5, time);
-            // Very short decay for a tight closed hi-hat sound
-            noiseEnvelope.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
-            
-            noiseSource.connect(noiseFilter);
-            noiseFilter.connect(noiseEnvelope);
-            noiseEnvelope.connect(audioCtx.destination);
-            
-            noiseSource.start(time);
-            noiseSource.stop(time + 0.05);
-        }
-
-        // --- Sequencer Logic ---
-        let isPlaying = false;
-        let currentStep = 0;
-        let nextNoteTime = 0.0;
-        let tempo = 120;
-        let timerID;
-        const lookahead = 25.0; // How frequently to wake up and schedule notes (ms)
-        const scheduleAheadTime = 0.1; // How far ahead to schedule audio (sec)
-
-        function nextNote() {
-            // Advance the time based on the tempo (calculating 16th notes)
-            const secondsPerBeat = 60.0 / tempo;
-            nextNoteTime += 0.25 * secondsPerBeat; // 0.25 represents a 16th note
-            
-            currentStep++;
-            if (currentStep === 16) {
-                currentStep = 0; // Loop back to the beginning
+        function deleteVocalLayer(id) {
+            const layer = voiceLayers.find(l => l.id === id);
+            if(layer) {
+                layer.gainNode.disconnect();
+                layer.delayNode.disconnect();
             }
+            voiceLayers = voiceLayers.filter(l => l.id !== id);
+            renderVocalLayers();
+        }
+
+        function renderVocalLayers() {
+            vocalContainer.innerHTML = '';
+            if(voiceLayers.length === 0) {
+                vocalContainer.innerHTML = '<div style="color:#666; font-size: 13px; text-align:center;">No vocals yet. Hit record!</div>';
+                return;
+            }
+
+            voiceLayers.forEach((layer, index) => {
+                const el = document.createElement('div');
+                el.className = 'voice-layer';
+                el.innerHTML = `
+                    <div style="font-weight: bold; width: 60px;">Voc ${index + 1}</div>
+                    <div class="voice-controls">
+                        <div class="mini-slider-group">
+                            Vol: <input type="range" min="0" max="2" step="0.1" value="1" 
+                                 onchange="updateVoiceSettings('${layer.id}', 'vol', this.value)">
+                        </div>
+                        <div class="mini-slider-group">
+                            Pitch/Speed: <input type="range" min="0.5" max="1.5" step="0.05" value="1" 
+                                 onchange="updateVoiceSettings('${layer.id}', 'pitch', this.value)">
+                        </div>
+                        <div class="mini-slider-group">
+                            Dreamy Echo: <input type="range" min="0" max="1" step="0.1" value="0" 
+                                 onchange="updateVoiceSettings('${layer.id}', 'echo', this.value)">
+                        </div>
+                    </div>
+                    <button class="delete-btn" onclick="deleteVocalLayer('${layer.id}')">✖ Delete</button>
+                `;
+                vocalContainer.appendChild(el);
+            });
+        }
+
+        window.updateVoiceSettings = (id, setting, value) => {
+            const layer = voiceLayers.find(l => l.id === id);
+            if (!layer) return;
+            const val = parseFloat(value);
+            
+            if (setting === 'vol') layer.gainNode.gain.value = val;
+            if (setting === 'pitch') layer.speedPitch = val;
+            if (setting === 'echo') {
+                // If 0, no delay. If higher, increase delay time slightly and allow signal into delay node
+                layer.delayNode.delayTime.value = val > 0 ? (60 / tempo) * 0.75 : 0; // Synced to 3/4 beat
+                // We use the slider to control how much original signal feeds into the delay
+            }
+        };
+
+        // --- SEQUENCER SCHEDULING ---
+        function nextNote() {
+            const secondsPerBeat = 60.0 / tempo;
+            nextNoteTime += 0.25 * secondsPerBeat; // 16th notes
+            currentStep++;
+            if (currentStep === 16) currentStep = 0;
         }
 
         function scheduleNote(stepNumber, time) {
-            // Sync UI updates
+            // Visual Updates
             requestAnimationFrame(() => {
-                // Clear old highlights
                 document.querySelectorAll('.cell').forEach(c => c.classList.remove('current'));
-                // Add new highlights to current column
-                instruments.forEach(inst => {
-                    const cell = document.getElementById(`cell-${inst}-${stepNumber}`);
+                drumTracks.forEach(track => {
+                    const cell = document.getElementById(`cell-${track.id}-${stepNumber}`);
                     if (cell) cell.classList.add('current');
                 });
             });
 
-            // Check grid to see if a note is active on this step, and play it
-            if (document.getElementById(`cell-kick-${stepNumber}`).classList.contains('active')) {
-                playKick(time);
-            }
-            if (document.getElementById(`cell-snare-${stepNumber}`).classList.contains('active')) {
-                playSnare(time);
-            }
-            if (document.getElementById(`cell-hihat-${stepNumber}`).classList.contains('active')) {
-                playHiHat(time);
+            // Play Drums
+            drumTracks.forEach(track => {
+                if (track.pattern[stepNumber]) {
+                    playDrum(track.type, track.pitchMultiplier, time);
+                }
+            });
+
+            // Play Vocals (Triggered only on Step 0 so they loop with the beat)
+            if (stepNumber === 0 && !isRecordingVocal) {
+                voiceLayers.forEach(layer => {
+                    if (layer.buffer) {
+                        const source = audioCtx.createBufferSource();
+                        source.buffer = layer.buffer;
+                        source.playbackRate.value = layer.speedPitch;
+                        source.connect(layer.gainNode);
+                        source.start(time);
+                        
+                        // Keep track so we can stop it if user pauses
+                        layer.activeSources.push(source);
+                    }
+                });
             }
         }
 
         function scheduler() {
-            // While there are notes that will need to play before the next interval, schedule them
-            while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime ) {
+            while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
                 scheduleNote(currentStep, nextNoteTime);
                 nextNote();
             }
             timerID = window.setTimeout(scheduler, lookahead);
         }
 
-        // --- Event Listeners ---
-        const playBtn = document.getElementById('playBtn');
-        const bpmSlider = document.getElementById('bpmSlider');
-        const bpmDisplay = document.getElementById('bpmDisplay');
-
-        playBtn.addEventListener('click', () => {
-            initAudio(); // Browsers require audio context to be started by a user gesture
-            
+        // --- PLAYBACK CONTROLS ---
+        function togglePlayback() {
+            initAudio();
             isPlaying = !isPlaying;
             
             if (isPlaying) {
-                // Pre-set a basic pattern if the grid is completely empty
-                const activeCells = document.querySelectorAll('.cell.active');
-                if (activeCells.length === 0) {
-                    // Kick on 1, 5, 9, 13
-                    [0, 4, 8, 12].forEach(i => document.getElementById(`cell-kick-${i}`).classList.add('active'));
-                    // Snare on 5, 13
-                    [4, 12].forEach(i => document.getElementById(`cell-snare-${i}`).classList.add('active'));
-                    // Hi-hat on every odd step
-                    [0, 2, 4, 6, 8, 10, 12, 14].forEach(i => document.getElementById(`cell-hihat-${i}`).classList.add('active'));
-                }
-
                 currentStep = 0;
                 nextNoteTime = audioCtx.currentTime + 0.05;
                 scheduler();
-                playBtn.innerText = "⏸ Stop";
+                playBtn.innerHTML = "⏸ Stop Demo";
                 playBtn.classList.add('playing');
             } else {
                 window.clearTimeout(timerID);
-                playBtn.innerText = "▶ Play";
+                playBtn.innerHTML = "▶ Play Demo";
                 playBtn.classList.remove('playing');
+                
+                // Visual cleanup
                 document.querySelectorAll('.cell').forEach(c => c.classList.remove('current'));
+                
+                // Stop all playing voice buffers
+                voiceLayers.forEach(layer => {
+                    layer.activeSources.forEach(src => {
+                        try { src.stop(); } catch(e){}
+                    });
+                    layer.activeSources = []; // Clear array
+                });
+                
+                if(isRecordingVocal) stopVocalRecording();
             }
-        });
+        }
+
+        playBtn.addEventListener('click', togglePlayback);
 
         bpmSlider.addEventListener('input', (e) => {
             tempo = e.target.value;
             bpmDisplay.innerText = tempo;
         });
+
+        // --- DOWNLOAD MIX ---
+        let mixRecorder;
+        let mixChunks = [];
+
+        downloadMixBtn.addEventListener('click', () => {
+            initAudio();
+            if (isPlaying) togglePlayback(); // Stop if currently playing
+
+            // Setup recording of the Master bus
+            mixChunks = [];
+            mixRecorder = new MediaRecorder(mixDestination.stream);
+            
+            mixRecorder.ondataavailable = e => { if (e.data.size > 0) mixChunks.push(e.data); };
+            mixRecorder.onstop = () => {
+                const blob = new Blob(mixChunks, { type: 'audio/webm' }); // Browsers generally export webm audio
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `BeatBox_Demo_${tempo}BPM.webm`;
+                document.body.appendChild(a);
+                a.click();
+                URL.revokeObjectURL(url);
+                downloadMixBtn.innerHTML = "⬇ Download Mix (WAV/WEBM)";
+                downloadMixBtn.classList.remove('recording');
+            };
+
+            // Start recording, then start playback
+            mixRecorder.start();
+            downloadMixBtn.innerHTML = "🔴 Bounce in progress... Click to stop & save";
+            downloadMixBtn.classList.add('recording');
+            
+            // Give a tiny delay so the recorder is ready, then play
+            setTimeout(() => { togglePlayback(); }, 100);
+        });
+
+
+        // --- INITIALIZATION ---
+        // Load some default tracks so it's not empty
+        createDrumTrack('hihat', [0, 2, 4, 6, 8, 10, 12, 14]);
+        createDrumTrack('snare', [4, 12]);
+        createDrumTrack('kick', [0, 4, 8, 12]);
+        renderVocalLayers(); // Show empty state
+
     </script>
 </body>
 </html>

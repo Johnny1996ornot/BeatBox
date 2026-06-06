@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BeatBox - Demo Studio</title>
+    <title>BeatBox - Timeline Studio</title>
     <style>
         :root {
             --bg-color: #0d1117;
@@ -17,11 +17,18 @@
             --cell-kick: #ff7b72;
             --cell-snare: #d2a8ff;
             --cell-hihat: #7ee787;
-            --cell-current: #f2cc60;
+            --cell-current: rgba(242, 204, 96, 0.4);
+            --track-bg: #090c10;
+            --clip-color: #1f6feb;
+            
+            /* Sizing for timeline alignment */
+            --header-width: 200px;
+            --step-width: 40px;
+            --total-grid-width: calc(var(--step-width) * 16);
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             display: flex;
@@ -30,36 +37,31 @@
             padding: 20px;
             margin: 0;
             min-height: 100vh;
+            user-select: none; /* Prevent text selection while dragging */
         }
 
         h1 {
             font-weight: 800;
             letter-spacing: 2px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             color: #ffffff;
-            text-transform: uppercase;
         }
 
-        .subtitle {
-            color: #8b949e;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
+        .subtitle { color: #8b949e; margin-bottom: 20px; font-size: 14px; }
 
         .studio-container {
             width: 100%;
             max-width: 1000px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 15px;
         }
 
         .panel {
             background-color: var(--panel-bg);
             border: 1px solid var(--panel-border);
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            border-radius: 8px;
+            padding: 20px;
         }
 
         .master-controls {
@@ -74,650 +76,719 @@
             background-color: var(--primary-color);
             color: #ffffff;
             border: none;
-            padding: 10px 20px;
+            padding: 10px 15px;
             font-size: 14px;
             font-weight: 600;
             border-radius: 6px;
             cursor: pointer;
-            transition: background-color 0.2s, transform 0.1s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            transition: 0.1s;
         }
 
         button:active { transform: scale(0.97); }
-        button.playing { background-color: var(--danger-color); }
         button.recording { background-color: var(--danger-color); animation: pulse 1s infinite; }
         button.action-btn { background-color: var(--success-color); }
         
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
-        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
 
-        .control-group {
+        /* Unified Grid & Timeline Layout */
+        .layout-row {
             display: flex;
+            margin-bottom: 8px;
             align-items: center;
-            gap: 10px;
-            font-size: 14px;
         }
 
-        /* Sequencer Grid Styles */
-        .track-row {
-            display: grid;
-            grid-template-columns: 200px repeat(16, 1fr) 40px;
-            gap: 6px;
-            align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--panel-border);
-        }
-
-        .track-controls {
+        .row-header {
+            width: var(--header-width);
+            flex-shrink: 0;
+            padding-right: 15px;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            gap: 5px;
-            padding-right: 15px;
+            justify-content: center;
         }
 
-        .track-name {
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 12px;
-            color: #8b949e;
+        .row-content {
+            width: var(--total-grid-width);
+            height: 40px;
+            position: relative;
+            background-color: var(--track-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
         }
 
-        .mini-slider-group {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            color: #aaa;
+        /* Drum Grid Specifics */
+        .drum-grid {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            height: 100%;
         }
-
-        .mini-slider-group input { width: 60px; }
 
         .cell {
-            aspect-ratio: 1;
-            background-color: var(--cell-empty);
-            border-radius: 4px;
+            border-right: 1px solid var(--panel-border);
             cursor: pointer;
-            transition: all 0.1s;
+            box-sizing: border-box;
+            background-color: var(--cell-empty);
+        }
+        
+        .cell:last-child { border-right: none; }
+        .cell:nth-child(4n + 1) { border-left: 2px solid #30363d; } /* Visual beat marker */
+        
+        .cell[data-type="kick"].active { background-color: var(--cell-kick); }
+        .cell[data-type="snare"].active { background-color: var(--cell-snare); }
+        .cell[data-type="hihat"].active { background-color: var(--cell-hihat); }
+
+        .track-name { font-weight: bold; font-size: 12px; color: #c9d1d9; text-transform: uppercase; }
+        .track-controls { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+        .mini-slider { width: 60px; accent-color: var(--primary-color); }
+        .control-label { font-size: 10px; color: #8b949e; }
+
+        /* Timeline Specifics */
+        .timeline-track {
+            height: 60px; /* Taller for audio clips */
+            background-image: linear-gradient(to right, var(--panel-border) 1px, transparent 1px);
+            background-size: var(--step-width) 100%; /* Syncs vertical lines with drum steps */
+            position: relative;
+            overflow: hidden;
         }
 
-        .cell:hover { filter: brightness(1.3); }
-        .cell[data-type="kick"].active { background-color: var(--cell-kick); box-shadow: 0 0 8px var(--cell-kick); }
-        .cell[data-type="snare"].active { background-color: var(--cell-snare); box-shadow: 0 0 8px var(--cell-snare); }
-        .cell[data-type="hihat"].active { background-color: var(--cell-hihat); box-shadow: 0 0 8px var(--cell-hihat); }
+        .audio-clip {
+            position: absolute;
+            height: 80%;
+            top: 10%;
+            background-color: var(--clip-color);
+            border: 1px solid #79c0ff;
+            border-radius: 4px;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-sizing: border-box;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transition: filter 0.1s;
+        }
+
+        .audio-clip:active { cursor: grabbing; filter: brightness(1.2); }
         
-        .cell.current { border: 2px solid var(--cell-current); transform: scale(1.1); z-index: 2; }
-        .cell:nth-child(4n + 2) { margin-right: 6px; }
+        .clip-label {
+            font-size: 10px;
+            color: white;
+            pointer-events: none;
+            white-space: nowrap;
+        }
 
         .delete-btn {
-            background: transparent;
-            color: var(--danger-color);
-            padding: 5px;
-            border: 1px solid var(--panel-border);
-        }
-        .delete-btn:hover { background: var(--danger-color); color: white; }
-
-        .add-track-area {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            background: transparent; padding: 2px 5px; font-size: 10px; color: var(--danger-color);
         }
 
-        select {
-            background-color: var(--bg-color);
-            color: white;
-            border: 1px solid var(--panel-border);
-            padding: 8px;
-            border-radius: 6px;
-        }
-
-        /* Voice Layers Styles */
-        .voice-layer {
-            background-color: var(--bg-color);
-            border: 1px solid var(--panel-border);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .voice-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-grow: 1;
+        /* Playhead */
+        #playhead {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100%;
+            background-color: var(--cell-current);
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+            box-shadow: 0 0 10px var(--cell-current);
         }
         
-        input[type=range] { cursor: pointer; accent-color: var(--primary-color); }
+        .playhead-container {
+            position: absolute;
+            width: var(--total-grid-width);
+            height: 100%;
+            pointer-events: none;
+        }
 
+        .instructions {
+            font-size: 12px; color: #8b949e; background: #090c10; padding: 10px; border-radius: 6px; border: 1px solid #30363d;
+        }
     </style>
 </head>
 <body>
 
     <h1>BEATBOX</h1>
-    <div class="subtitle">Idea Scratchpad & Demo Studio</div>
+    <div class="subtitle">Timeline Demo Studio</div>
 
     <div class="studio-container">
         
         <div class="panel master-controls">
-            <button id="masterPlayBtn">▶ Play Demo</button>
-            
-            <div class="control-group">
-                <label>Tempo: <span id="bpmDisplay">120</span></label>
+            <button id="playBtn">▶ Play Demo</button>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label style="font-size: 14px;">BPM: <span id="bpmDisplay">120</span></label>
                 <input type="range" id="bpmSlider" min="60" max="200" value="120">
             </div>
-
-            <button id="downloadMixBtn" class="action-btn">⬇ Download Mix (WAV)</button>
+            <button id="downloadBtn" class="action-btn">⬇ Download Mix</button>
         </div>
 
-        <div class="panel">
-            <h3>Drum Machine</h3>
-            <div id="sequencer-grid">
-                </div>
+        <div class="panel" style="position: relative;">
+            <h3>Drums</h3>
+            <div id="drum-container"></div>
             
-            <div class="add-track-area">
-                <select id="newTrackType">
-                    <option value="kick">Kick Drum</option>
-                    <option value="snare">Snare Drum</option>
-                    <option value="hihat">Hi-Hat</option>
-                </select>
-                <button id="addTrackBtn">+ Add Instrument Line</button>
+            <div class="playhead-container" style="left: calc(var(--header-width) + 20px);">
+                <div id="playhead"></div>
             </div>
         </div>
 
         <div class="panel">
-            <h3>Vocal Layers</h3>
-            <p style="font-size: 12px; color: #aaa; margin-top: -10px; margin-bottom: 15px;">Note: Wear headphones when recording to prevent microphone feedback. Recording will start from the beginning of the beat.</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3>Vocal Layers</h3>
+                <button id="recordBtn" style="background-color: var(--danger-color);">🎤 Record Vocal Layer</button>
+            </div>
             
-            <div class="master-controls" style="margin-bottom: 20px;">
-                <button id="recordVocalBtn" style="background-color: #d73a49;">🎤 Record New Vocal Layer</button>
-                <span id="recordingStatus" style="color: #d73a49; display: none; font-weight: bold; animation: pulse 1s infinite;">RECORDING... Click stop to save.</span>
+            <div class="instructions">
+                <strong>💡 Quick Tips:</strong> Drag blocks left/right to fix timing latency. Drag up/down to move to different tracks. <br>
+                <strong>Duplicate:</strong> Hold <code>Shift</code> while dragging. <strong>Cut:</strong> <code>Double-click</code> a block to split it in half. <strong>Delete:</strong> Drag block completely out of the tracks.
             </div>
 
-            <div id="vocal-layers-container">
+            <div id="vocal-container" style="margin-top: 20px;">
                 </div>
+            <button id="addVocalTrackBtn" style="margin-top: 15px; background: transparent; border: 1px solid #58a6ff; color: #58a6ff;">+ Add Empty Track</button>
         </div>
 
     </div>
 
     <script>
-        // --- CORE STATE ---
+        // --- CORE SYSTEM & STATE ---
         let audioCtx;
         let masterGain;
-        let mixDestination; // Used for downloading the final mix
-        let isPlaying = false;
+        let mixDest;
+        let noiseBuffer;
+        
+        const STEPS = 16;
+        const STEP_WIDTH_PX = 40;
         let tempo = 120;
+        let isPlaying = false;
+        
+        // Scheduling timing
         let currentStep = 0;
         let nextNoteTime = 0.0;
         let timerID;
-        let trackIdCounter = 0;
-        let voiceIdCounter = 0;
+        let loopStartTime = 0;
         
-        const lookahead = 25.0;
-        const scheduleAheadTime = 0.1;
-        const steps = 16;
-        let noiseBuffer;
+        // Data Structures
+        const drumTracks = [
+            { id: 'hihat', type: 'hihat', pitch: 1.0, pattern: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false] },
+            { id: 'snare', type: 'snare', pitch: 1.0, pattern: [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false] },
+            { id: 'kick', type: 'kick', pitch: 1.0, pattern: [true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false] }
+        ];
 
-        // Arrays holding our musical data
-        let drumTracks = []; 
-        let voiceLayers = []; 
+        let vocalTracks = [
+            { id: 'vt-0', volume: 1.0, pitch: 1.0, echo: 0, gainNode: null, delayNode: null },
+            { id: 'vt-1', volume: 1.0, pitch: 1.0, echo: 0, gainNode: null, delayNode: null }
+        ];
+
+        let audioClips = []; // Holds { id, buffer, trackId, startStep, durationSteps, sourceNode }
+        let clipIdCounter = 0;
 
         // --- DOM ELEMENTS ---
-        const gridContainer = document.getElementById('sequencer-grid');
-        const vocalContainer = document.getElementById('vocal-layers-container');
-        const playBtn = document.getElementById('masterPlayBtn');
-        const bpmSlider = document.getElementById('bpmSlider');
-        const bpmDisplay = document.getElementById('bpmDisplay');
-        const addTrackBtn = document.getElementById('addTrackBtn');
-        const newTrackType = document.getElementById('newTrackType');
-        const recordVocalBtn = document.getElementById('recordVocalBtn');
-        const recordingStatus = document.getElementById('recordingStatus');
-        const downloadMixBtn = document.getElementById('downloadMixBtn');
+        const drumContainer = document.getElementById('drum-container');
+        const vocalContainer = document.getElementById('vocal-container');
+        const playhead = document.getElementById('playhead');
 
-        // --- AUDIO INITIALIZATION ---
+        // --- AUDIO ENGINE ---
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Set up main routing
                 masterGain = audioCtx.createGain();
                 masterGain.connect(audioCtx.destination);
                 
-                // Set up mixdown routing (for downloading)
-                mixDestination = audioCtx.createMediaStreamDestination();
-                masterGain.connect(mixDestination);
+                mixDest = audioCtx.createMediaStreamDestination();
+                masterGain.connect(mixDest);
 
-                createNoiseBuffer();
+                createNoise();
+                initVocalRouting();
             }
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function createNoiseBuffer() {
-            const bufferSize = audioCtx.sampleRate * 2;
-            noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        function createNoise() {
+            const size = audioCtx.sampleRate * 2;
+            noiseBuffer = audioCtx.createBuffer(1, size, audioCtx.sampleRate);
             const output = noiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+            for (let i = 0; i < size; i++) output[i] = Math.random() * 2 - 1;
         }
 
-        // --- DRUM TRACK MANAGEMENT ---
-        function createDrumTrack(type, presetPattern = []) {
-            const trackId = `track-${trackIdCounter++}`;
-            const track = {
-                id: trackId,
-                type: type,
-                pitchMultiplier: 1.0, // 1 is normal, <1 is lower, >1 is higher
-                pattern: Array(steps).fill(false)
-            };
-
-            // Apply preset pattern if provided
-            presetPattern.forEach(stepIndex => {
-                if(stepIndex < steps) track.pattern[stepIndex] = true;
-            });
-
-            drumTracks.push(track);
-            renderDrumTracks();
-        }
-
-        function deleteDrumTrack(id) {
-            drumTracks = drumTracks.filter(t => t.id !== id);
-            renderDrumTracks();
-        }
-
-        function renderDrumTracks() {
-            gridContainer.innerHTML = '';
-            drumTracks.forEach(track => {
-                const row = document.createElement('div');
-                row.className = 'track-row';
+        function initVocalRouting() {
+            vocalTracks.forEach(track => {
+                track.gainNode = audioCtx.createGain();
+                track.delayNode = audioCtx.createDelay(5.0);
+                track.delayNode.delayTime.value = 0;
                 
-                // Track Controls (Name & Pitch)
-                const controls = document.createElement('div');
-                controls.className = 'track-controls';
-                controls.innerHTML = `
-                    <div class="track-name">${track.type}</div>
-                    <div class="mini-slider-group">
-                        Pitch: 
-                        <input type="range" min="0.5" max="2" step="0.1" value="${track.pitchMultiplier}" 
-                               onchange="updateTrackPitch('${track.id}', this.value)">
-                    </div>
-                `;
-                row.appendChild(controls);
-
-                // Grid Cells
-                for (let i = 0; i < steps; i++) {
-                    const cell = document.createElement('div');
-                    cell.className = `cell ${track.pattern[i] ? 'active' : ''}`;
-                    cell.dataset.type = track.type;
-                    cell.id = `cell-${track.id}-${i}`;
-                    
-                    cell.addEventListener('click', () => {
-                        track.pattern[i] = !track.pattern[i];
-                        cell.classList.toggle('active');
-                    });
-                    row.appendChild(cell);
-                }
-
-                // Delete Button
-                const delBtn = document.createElement('button');
-                delBtn.className = 'delete-btn';
-                delBtn.innerHTML = '✖';
-                delBtn.onclick = () => deleteDrumTrack(track.id);
-                row.appendChild(delBtn);
-
-                gridContainer.appendChild(row);
+                const feedback = audioCtx.createGain();
+                feedback.gain.value = 0.4;
+                
+                track.delayNode.connect(feedback);
+                feedback.connect(track.delayNode);
+                track.delayNode.connect(masterGain);
+                
+                track.gainNode.connect(masterGain);
+                track.gainNode.connect(track.delayNode);
+                
+                updateTrackFX(track);
             });
         }
 
-        window.updateTrackPitch = (trackId, value) => {
-            const track = drumTracks.find(t => t.id === trackId);
-            if(track) track.pitchMultiplier = parseFloat(value);
-        };
-
-        addTrackBtn.addEventListener('click', () => {
-            createDrumTrack(newTrackType.value);
-        });
+        function updateTrackFX(track) {
+            if(!track.gainNode) return;
+            track.gainNode.gain.value = track.volume;
+            // Echo is synced to tempo (3/4 of a beat)
+            track.delayNode.delayTime.value = track.echo > 0 ? (60 / tempo) * 0.75 : 0;
+        }
 
         // --- SYNTHESIZERS ---
-        function playDrum(type, pitchMult, time) {
+        function playDrum(type, pitch, time) {
             if (type === 'kick') {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
-                osc.connect(gain);
-                gain.connect(masterGain);
-                
-                osc.frequency.setValueAtTime(150 * pitchMult, time);
+                osc.connect(gain).connect(masterGain);
+                osc.frequency.setValueAtTime(150 * pitch, time);
                 osc.frequency.exponentialRampToValueAtTime(0.001, time + 0.5);
                 gain.gain.setValueAtTime(1, time);
                 gain.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
-                
-                osc.start(time);
-                osc.stop(time + 0.5);
-            } 
-            else if (type === 'snare') {
-                // Noise snap
+                osc.start(time); osc.stop(time + 0.5);
+            } else if (type === 'snare') {
                 const noise = audioCtx.createBufferSource();
                 noise.buffer = noiseBuffer;
                 const filter = audioCtx.createBiquadFilter();
-                filter.type = 'highpass';
-                filter.frequency.value = 1000 * pitchMult; // pitch affects snap color
-                const nGain = audioCtx.createGain();
-                
-                nGain.gain.setValueAtTime(1, time);
-                nGain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
-                noise.connect(filter).connect(nGain).connect(masterGain);
+                filter.type = 'highpass'; filter.frequency.value = 1000 * pitch;
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(1, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+                noise.connect(filter).connect(gain).connect(masterGain);
                 noise.start(time); noise.stop(time + 0.2);
-                
-                // Body
+
                 const osc = audioCtx.createOscillator();
                 const oGain = audioCtx.createGain();
-                osc.type = 'triangle';
-                osc.connect(oGain).connect(masterGain);
-                osc.frequency.setValueAtTime(250 * pitchMult, time);
-                oGain.gain.setValueAtTime(0.7, time);
-                oGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+                osc.type = 'triangle'; osc.connect(oGain).connect(masterGain);
+                osc.frequency.setValueAtTime(250 * pitch, time);
+                oGain.gain.setValueAtTime(0.7, time); oGain.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
                 osc.start(time); osc.stop(time + 0.2);
-            }
-            else if (type === 'hihat') {
+            } else if (type === 'hihat') {
                 const noise = audioCtx.createBufferSource();
                 noise.buffer = noiseBuffer;
                 const filter = audioCtx.createBiquadFilter();
-                filter.type = 'highpass';
-                filter.frequency.value = 7000 * pitchMult;
+                filter.type = 'highpass'; filter.frequency.value = 7000 * pitch;
                 const gain = audioCtx.createGain();
-                
-                gain.gain.setValueAtTime(0.5, time);
-                gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+                gain.gain.setValueAtTime(0.5, time); gain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
                 noise.connect(filter).connect(gain).connect(masterGain);
                 noise.start(time); noise.stop(time + 0.05);
             }
         }
 
-        // --- VOCAL RECORDING & LAYERING ---
-        let mediaRecorder;
-        let audioChunks = [];
-        let isRecordingVocal = false;
+        // --- SCHEDULING & PLAYBACK ---
+        function getSecondsPerStep() { return (60.0 / tempo) * 0.25; }
 
-        async function startVocalRecording() {
-            initAudio();
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = e => {
-                    if (e.data.size > 0) audioChunks.push(e.data);
-                };
-
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const arrayBuffer = await audioBlob.arrayBuffer();
-                    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-                    addVocalLayer(audioBuffer);
-                    
-                    // Stop microphone tracks to free resources
-                    stream.getTracks().forEach(track => track.stop());
-                };
-
-                // Auto-start playback so user can sing along
-                if (!isPlaying) togglePlayback();
-                
-                // We reset sequencer to step 0 to ensure vocal is synced to start of loop
-                currentStep = 0;
-                nextNoteTime = audioCtx.currentTime + 0.1;
-
-                mediaRecorder.start();
-                isRecordingVocal = true;
-                recordVocalBtn.innerHTML = "⏹ Stop Recording";
-                recordingStatus.style.display = "inline";
-
-            } catch (err) {
-                alert("Microphone access denied or not available. " + err);
-            }
-        }
-
-        function stopVocalRecording() {
-            if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                mediaRecorder.stop();
-            }
-            isRecordingVocal = false;
-            recordVocalBtn.innerHTML = "🎤 Record New Vocal Layer";
-            recordingStatus.style.display = "none";
-        }
-
-        recordVocalBtn.addEventListener('click', () => {
-            if (isRecordingVocal) stopVocalRecording();
-            else startVocalRecording();
-        });
-
-        function addVocalLayer(buffer) {
-            const voiceId = `voice-${voiceIdCounter++}`;
-            
-            // Set up audio nodes for this layer
-            const gainNode = audioCtx.createGain();
-            gainNode.gain.value = 1.0;
-
-            const delayNode = audioCtx.createDelay(5.0); // max 5 sec delay
-            delayNode.delayTime.value = 0; // default no echo
-            const feedbackGain = audioCtx.createGain();
-            feedbackGain.gain.value = 0.4; // amount of echo repeats
-
-            // Routing: Source -> Gain -> Master
-            //                -> Delay -> Feedback -> Delay
-            //                -> Master
-            delayNode.connect(feedbackGain);
-            feedbackGain.connect(delayNode);
-            delayNode.connect(masterGain);
-            gainNode.connect(masterGain);
-            gainNode.connect(delayNode); // feed into echo
-
-            const layer = {
-                id: voiceId,
-                buffer: buffer,
-                speedPitch: 1.0,
-                volume: 1.0,
-                gainNode: gainNode,
-                delayNode: delayNode,
-                activeSources: [] // Track playing sources to stop them
-            };
-            voiceLayers.push(layer);
-            renderVocalLayers();
-        }
-
-        function deleteVocalLayer(id) {
-            const layer = voiceLayers.find(l => l.id === id);
-            if(layer) {
-                layer.gainNode.disconnect();
-                layer.delayNode.disconnect();
-            }
-            voiceLayers = voiceLayers.filter(l => l.id !== id);
-            renderVocalLayers();
-        }
-
-        function renderVocalLayers() {
-            vocalContainer.innerHTML = '';
-            if(voiceLayers.length === 0) {
-                vocalContainer.innerHTML = '<div style="color:#666; font-size: 13px; text-align:center;">No vocals yet. Hit record!</div>';
-                return;
-            }
-
-            voiceLayers.forEach((layer, index) => {
-                const el = document.createElement('div');
-                el.className = 'voice-layer';
-                el.innerHTML = `
-                    <div style="font-weight: bold; width: 60px;">Voc ${index + 1}</div>
-                    <div class="voice-controls">
-                        <div class="mini-slider-group">
-                            Vol: <input type="range" min="0" max="2" step="0.1" value="1" 
-                                 onchange="updateVoiceSettings('${layer.id}', 'vol', this.value)">
-                        </div>
-                        <div class="mini-slider-group">
-                            Pitch/Speed: <input type="range" min="0.5" max="1.5" step="0.05" value="1" 
-                                 onchange="updateVoiceSettings('${layer.id}', 'pitch', this.value)">
-                        </div>
-                        <div class="mini-slider-group">
-                            Dreamy Echo: <input type="range" min="0" max="1" step="0.1" value="0" 
-                                 onchange="updateVoiceSettings('${layer.id}', 'echo', this.value)">
-                        </div>
-                    </div>
-                    <button class="delete-btn" onclick="deleteVocalLayer('${layer.id}')">✖ Delete</button>
-                `;
-                vocalContainer.appendChild(el);
-            });
-        }
-
-        window.updateVoiceSettings = (id, setting, value) => {
-            const layer = voiceLayers.find(l => l.id === id);
-            if (!layer) return;
-            const val = parseFloat(value);
-            
-            if (setting === 'vol') layer.gainNode.gain.value = val;
-            if (setting === 'pitch') layer.speedPitch = val;
-            if (setting === 'echo') {
-                // If 0, no delay. If higher, increase delay time slightly and allow signal into delay node
-                layer.delayNode.delayTime.value = val > 0 ? (60 / tempo) * 0.75 : 0; // Synced to 3/4 beat
-                // We use the slider to control how much original signal feeds into the delay
-            }
-        };
-
-        // --- SEQUENCER SCHEDULING ---
         function nextNote() {
-            const secondsPerBeat = 60.0 / tempo;
-            nextNoteTime += 0.25 * secondsPerBeat; // 16th notes
+            nextNoteTime += getSecondsPerStep();
             currentStep++;
-            if (currentStep === 16) currentStep = 0;
+            if (currentStep >= STEPS) {
+                currentStep = 0;
+                loopStartTime = nextNoteTime; // Reset loop anchor
+                scheduleVocalsForLoop(loopStartTime); // Schedule all vocals for the new loop
+            }
         }
 
-        function scheduleNote(stepNumber, time) {
-            // Visual Updates
-            requestAnimationFrame(() => {
-                document.querySelectorAll('.cell').forEach(c => c.classList.remove('current'));
-                drumTracks.forEach(track => {
-                    const cell = document.getElementById(`cell-${track.id}-${stepNumber}`);
-                    if (cell) cell.classList.add('current');
-                });
-            });
-
-            // Play Drums
+        function scheduleDrums(stepNumber, time) {
             drumTracks.forEach(track => {
-                if (track.pattern[stepNumber]) {
-                    playDrum(track.type, track.pitchMultiplier, time);
-                }
+                if (track.pattern[stepNumber]) playDrum(track.type, track.pitch, time);
             });
+        }
 
-            // Play Vocals (Triggered only on Step 0 so they loop with the beat)
-            if (stepNumber === 0 && !isRecordingVocal) {
-                voiceLayers.forEach(layer => {
-                    if (layer.buffer) {
-                        const source = audioCtx.createBufferSource();
-                        source.buffer = layer.buffer;
-                        source.playbackRate.value = layer.speedPitch;
-                        source.connect(layer.gainNode);
-                        source.start(time);
-                        
-                        // Keep track so we can stop it if user pauses
-                        layer.activeSources.push(source);
-                    }
-                });
-            }
+        function scheduleVocalsForLoop(baseTime) {
+            if(isRecording) return; // Don't trigger playback while recording
+            
+            audioClips.forEach(clip => {
+                const track = vocalTracks.find(t => t.id === clip.trackId);
+                if (!track) return;
+
+                // Calculate exactly when this clip should play relative to the start of the loop
+                const playTime = baseTime + (clip.startStep * getSecondsPerStep());
+                
+                const source = audioCtx.createBufferSource();
+                source.buffer = clip.buffer;
+                source.playbackRate.value = track.pitch; // Tape speed effect
+                source.connect(track.gainNode);
+                
+                source.start(playTime);
+                clip.sourceNode = source; // Store reference to stop it later
+            });
         }
 
         function scheduler() {
-            while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
-                scheduleNote(currentStep, nextNoteTime);
+            while (nextNoteTime < audioCtx.currentTime + 0.1) {
+                scheduleDrums(currentStep, nextNoteTime);
                 nextNote();
             }
-            timerID = window.setTimeout(scheduler, lookahead);
+            
+            // Visual Playhead update
+            if (isPlaying) {
+                const loopDuration = STEPS * getSecondsPerStep();
+                const timeInLoop = (audioCtx.currentTime - loopStartTime) % loopDuration;
+                const pxPos = (timeInLoop / loopDuration) * (STEPS * STEP_WIDTH_PX);
+                playhead.style.transform = `translateX(${pxPos}px)`;
+            }
+
+            timerID = window.setTimeout(scheduler, 25.0);
         }
 
-        // --- PLAYBACK CONTROLS ---
-        function togglePlayback() {
+        function stopAllVocals() {
+            audioClips.forEach(clip => {
+                if (clip.sourceNode) {
+                    try { clip.sourceNode.stop(); } catch(e){}
+                    clip.sourceNode = null;
+                }
+            });
+        }
+
+        document.getElementById('playBtn').addEventListener('click', (e) => {
             initAudio();
             isPlaying = !isPlaying;
+            const btn = e.target;
             
             if (isPlaying) {
                 currentStep = 0;
                 nextNoteTime = audioCtx.currentTime + 0.05;
+                loopStartTime = nextNoteTime;
+                
+                playhead.style.display = 'block';
+                scheduleVocalsForLoop(loopStartTime); // Schedule initial loop
                 scheduler();
-                playBtn.innerHTML = "⏸ Stop Demo";
-                playBtn.classList.add('playing');
+                
+                btn.innerText = "⏸ Stop Demo";
+                btn.classList.add('recording'); // reusing red color class
             } else {
                 window.clearTimeout(timerID);
-                playBtn.innerHTML = "▶ Play Demo";
-                playBtn.classList.remove('playing');
-                
-                // Visual cleanup
-                document.querySelectorAll('.cell').forEach(c => c.classList.remove('current'));
-                
-                // Stop all playing voice buffers
-                voiceLayers.forEach(layer => {
-                    layer.activeSources.forEach(src => {
-                        try { src.stop(); } catch(e){}
-                    });
-                    layer.activeSources = []; // Clear array
-                });
-                
-                if(isRecordingVocal) stopVocalRecording();
+                stopAllVocals();
+                playhead.style.display = 'none';
+                btn.innerText = "▶ Play Demo";
+                btn.classList.remove('recording');
             }
+        });
+
+        // --- UI RENDERING ---
+        function renderDrums() {
+            drumContainer.innerHTML = '';
+            drumTracks.forEach(track => {
+                const row = document.createElement('div');
+                row.className = 'layout-row';
+                
+                row.innerHTML = `
+                    <div class="row-header">
+                        <div class="track-name">${track.type}</div>
+                        <div class="track-controls">
+                            <span class="control-label">Pitch</span>
+                            <input type="range" class="mini-slider" min="0.5" max="2" step="0.1" value="${track.pitch}" 
+                                oninput="updateDrumPitch('${track.id}', this.value)">
+                        </div>
+                    </div>
+                    <div class="row-content drum-grid" id="grid-${track.id}"></div>
+                `;
+                drumContainer.appendChild(row);
+
+                const grid = row.querySelector('.drum-grid');
+                for (let i = 0; i < STEPS; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = `cell ${track.pattern[i] ? 'active' : ''}`;
+                    cell.dataset.type = track.type;
+                    cell.onclick = () => {
+                        track.pattern[i] = !track.pattern[i];
+                        cell.classList.toggle('active');
+                    };
+                    grid.appendChild(cell);
+                }
+            });
         }
 
-        playBtn.addEventListener('click', togglePlayback);
+        window.updateDrumPitch = (id, val) => { drumTracks.find(t => t.id === id).pitch = parseFloat(val); };
 
-        bpmSlider.addEventListener('input', (e) => {
-            tempo = e.target.value;
-            bpmDisplay.innerText = tempo;
-        });
+        function renderVocals() {
+            vocalContainer.innerHTML = '';
+            vocalTracks.forEach((track, index) => {
+                const row = document.createElement('div');
+                row.className = 'layout-row';
+                row.dataset.trackId = track.id;
+                
+                row.innerHTML = `
+                    <div class="row-header">
+                        <div class="track-name">Vox ${index + 1}</div>
+                        <div class="track-controls">
+                            <span class="control-label">Vol</span>
+                            <input type="range" class="mini-slider" min="0" max="2" step="0.1" value="${track.volume}" onchange="updateVoxFX('${track.id}', 'vol', this.value)">
+                            <span class="control-label">Pitch</span>
+                            <input type="range" class="mini-slider" min="0.5" max="1.5" step="0.1" value="${track.pitch}" onchange="updateVoxFX('${track.id}', 'pitch', this.value)">
+                        </div>
+                        <div class="track-controls">
+                            <span class="control-label">Echo</span>
+                            <input type="range" class="mini-slider" min="0" max="1" step="0.1" value="${track.echo}" onchange="updateVoxFX('${track.id}', 'echo', this.value)">
+                        </div>
+                    </div>
+                    <div class="row-content timeline-track" id="timeline-${track.id}"></div>
+                `;
+                vocalContainer.appendChild(row);
+            });
 
-        // --- DOWNLOAD MIX ---
-        let mixRecorder;
-        let mixChunks = [];
+            // Draw clips
+            audioClips.forEach(clip => {
+                const trackEl = document.getElementById(`timeline-${clip.trackId}`);
+                if (!trackEl) return;
 
-        downloadMixBtn.addEventListener('click', () => {
-            initAudio();
-            if (isPlaying) togglePlayback(); // Stop if currently playing
+                const clipEl = document.createElement('div');
+                clipEl.className = 'audio-clip';
+                clipEl.id = clip.id;
+                
+                // Calculate width based on buffer duration and tempo
+                const totalLoopSeconds = STEPS * getSecondsPerStep();
+                const widthPercentage = (clip.buffer.duration / totalLoopSeconds);
+                const widthPx = widthPercentage * (STEPS * STEP_WIDTH_PX);
+                
+                clipEl.style.left = `${clip.startStep * STEP_WIDTH_PX}px`;
+                clipEl.style.width = `${Math.max(20, widthPx)}px`; // min 20px wide
+                clipEl.innerHTML = `<span class="clip-label">Wave</span>`;
+                
+                // Drag Events
+                clipEl.addEventListener('mousedown', handleClipDragStart);
+                // Double Click to split
+                clipEl.addEventListener('dblclick', (e) => handleClipSplit(e, clip));
 
-            // Setup recording of the Master bus
-            mixChunks = [];
-            mixRecorder = new MediaRecorder(mixDestination.stream);
+                trackEl.appendChild(clipEl);
+            });
+        }
+
+        window.updateVoxFX = (id, param, val) => {
+            const track = vocalTracks.find(t => t.id === id);
+            val = parseFloat(val);
+            if (param === 'vol') track.volume = val;
+            if (param === 'pitch') track.pitch = val;
+            if (param === 'echo') track.echo = val;
+            updateTrackFX(track);
+        };
+
+        document.getElementById('addVocalTrackBtn').onclick = () => {
+            vocalTracks.push({ id: `vt-${vocalTracks.length}`, volume: 1.0, pitch: 1.0, echo: 0, gainNode: null, delayNode: null });
+            initVocalRouting();
+            renderVocals();
+        };
+
+        // --- DRAG, DROP, AND EDIT LOGIC ---
+        let draggingClipId = null;
+        let isShiftDown = false;
+        
+        window.addEventListener('keydown', e => { if(e.key === 'Shift') isShiftDown = true; });
+        window.addEventListener('keyup', e => { if(e.key === 'Shift') isShiftDown = false; });
+
+        function handleClipDragStart(e) {
+            e.preventDefault();
+            const el = e.target.closest('.audio-clip');
+            const clipIndex = audioClips.findIndex(c => c.id === el.id);
+            let clip = audioClips[clipIndex];
+
+            // Handle DUPLICATION (Copy/Paste)
+            if (isShiftDown) {
+                const newClip = { 
+                    id: `clip-${clipIdCounter++}`, 
+                    buffer: clip.buffer, 
+                    trackId: clip.trackId, 
+                    startStep: clip.startStep,
+                    sourceNode: null 
+                };
+                audioClips.push(newClip);
+                clip = newClip; // Start dragging the copy
+                renderVocals();
+            }
+
+            draggingClipId = clip.id;
             
-            mixRecorder.ondataavailable = e => { if (e.data.size > 0) mixChunks.push(e.data); };
-            mixRecorder.onstop = () => {
-                const blob = new Blob(mixChunks, { type: 'audio/webm' }); // Browsers generally export webm audio
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = `BeatBox_Demo_${tempo}BPM.webm`;
-                document.body.appendChild(a);
-                a.click();
-                URL.revokeObjectURL(url);
-                downloadMixBtn.innerHTML = "⬇ Download Mix (WAV/WEBM)";
-                downloadMixBtn.classList.remove('recording');
+            const onMouseMove = (moveEvent) => {
+                // Find what track we are hovering over
+                const tracks = document.querySelectorAll('.timeline-track');
+                let targetTrackId = clip.trackId;
+                let foundTrackEl = null;
+
+                tracks.forEach(tEl => {
+                    const rect = tEl.getBoundingClientRect();
+                    if (moveEvent.clientY >= rect.top && moveEvent.clientY <= rect.bottom) {
+                        targetTrackId = tEl.id.replace('timeline-', '');
+                        foundTrackEl = tEl;
+                    }
+                });
+
+                if (foundTrackEl) {
+                    const rect = foundTrackEl.getBoundingClientRect();
+                    // Calculate horizontal position relative to track container
+                    let xPos = moveEvent.clientX - rect.left;
+                    
+                    // Snap to grid (half steps for fine tuning)
+                    const snapPx = STEP_WIDTH_PX / 2; 
+                    xPos = Math.round(xPos / snapPx) * snapPx;
+                    
+                    // Bounds checking
+                    if (xPos < 0) xPos = 0;
+                    
+                    // Update data model
+                    clip.trackId = targetTrackId;
+                    clip.startStep = xPos / STEP_WIDTH_PX;
+                    
+                    // Force re-render to show moving instantly
+                    renderVocals();
+                } else {
+                    // Dragged outside tracks -> Delete intent
+                    document.getElementById(clip.id).style.opacity = '0.2';
+                }
             };
 
-            // Start recording, then start playback
-            mixRecorder.start();
-            downloadMixBtn.innerHTML = "🔴 Bounce in progress... Click to stop & save";
-            downloadMixBtn.classList.add('recording');
+            const onMouseUp = (upEvent) => {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+                
+                // If dragged way out of bounds vertically, delete it
+                const containerRect = vocalContainer.getBoundingClientRect();
+                if (upEvent.clientY < containerRect.top - 50 || upEvent.clientY > containerRect.bottom + 50) {
+                    audioClips = audioClips.filter(c => c.id !== clip.id);
+                }
+                
+                draggingClipId = null;
+                renderVocals();
+                
+                // Reschedule if playing to hear changes immediately
+                if (isPlaying) { stopAllVocals(); scheduleVocalsForLoop(loopStartTime); }
+            };
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        }
+
+        // --- SPLITTING AUDIO ---
+        async function handleClipSplit(e, clip) {
+            e.preventDefault();
+            const el = e.target.closest('.audio-clip');
+            const rect = el.getBoundingClientRect();
             
-            // Give a tiny delay so the recorder is ready, then play
-            setTimeout(() => { togglePlayback(); }, 100);
-        });
+            // Where did they click relative to the clip? (0.0 to 1.0)
+            const clickRatio = (e.clientX - rect.left) / rect.width;
+            
+            if(clickRatio <= 0.1 || clickRatio >= 0.9) return; // Don't split at edges
+            
+            const originalBuffer = clip.buffer;
+            const splitSampleTime = Math.floor(originalBuffer.length * clickRatio);
+            
+            // Create two new buffers
+            const buf1 = audioCtx.createBuffer(1, splitSampleTime, audioCtx.sampleRate);
+            const buf2 = audioCtx.createBuffer(1, originalBuffer.length - splitSampleTime, audioCtx.sampleRate);
+            
+            // Copy data
+            const origData = originalBuffer.getChannelData(0);
+            buf1.copyToChannel(origData.slice(0, splitSampleTime), 0);
+            buf2.copyToChannel(origData.slice(splitSampleTime), 0);
+            
+            // Update original clip to be first half
+            clip.buffer = buf1;
+            
+            // Create second half clip
+            const newClip = {
+                id: `clip-${clipIdCounter++}`,
+                buffer: buf2,
+                trackId: clip.trackId,
+                startStep: clip.startStep + (clickRatio * (originalBuffer.duration / getSecondsPerStep())),
+                sourceNode: null
+            };
+            audioClips.push(newClip);
+            
+            renderVocals();
+            if (isPlaying) { stopAllVocals(); scheduleVocalsForLoop(loopStartTime); }
+        }
 
+        // --- RECORDING ---
+        let mediaRec;
+        let audioChunks = [];
+        let isRecording = false;
 
-        // --- INITIALIZATION ---
-        // Load some default tracks so it's not empty
-        createDrumTrack('hihat', [0, 2, 4, 6, 8, 10, 12, 14]);
-        createDrumTrack('snare', [4, 12]);
-        createDrumTrack('kick', [0, 4, 8, 12]);
-        renderVocalLayers(); // Show empty state
+        document.getElementById('recordBtn').onclick = async (e) => {
+            const btn = e.target;
+            if (isRecording) {
+                mediaRec.stop();
+                btn.innerText = "🎤 Record Vocal Layer";
+                btn.classList.remove('recording');
+                isRecording = false;
+                return;
+            }
+
+            initAudio();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRec = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRec.ondataavailable = ev => { if (ev.data.size > 0) audioChunks.push(ev.data); };
+                mediaRec.onstop = async () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const arrBuf = await blob.arrayBuffer();
+                    const audioBuf = await audioCtx.decodeAudioData(arrBuf);
+                    
+                    // Add new clip at step 0 on Track 1
+                    audioClips.push({
+                        id: `clip-${clipIdCounter++}`,
+                        buffer: audioBuf,
+                        trackId: vocalTracks[0].id,
+                        startStep: 0,
+                        sourceNode: null
+                    });
+                    stream.getTracks().forEach(t => t.stop());
+                    renderVocals();
+                };
+
+                // Sync start
+                if (!isPlaying) document.getElementById('playBtn').click();
+                
+                // Wait for loop to restart to start recording perfectly
+                const timeToLoopStart = loopStartTime - audioCtx.currentTime;
+                setTimeout(() => {
+                    mediaRec.start();
+                    btn.innerText = "⏹ Stop Recording";
+                    btn.classList.add('recording');
+                    isRecording = true;
+                }, Math.max(0, timeToLoopStart * 1000));
+
+            } catch (err) { alert("Mic required. " + err); }
+        };
+
+        // --- EXPORT ---
+        document.getElementById('downloadBtn').onclick = () => {
+            initAudio();
+            if (isPlaying) document.getElementById('playBtn').click();
+            
+            const btn = document.getElementById('downloadBtn');
+            const mixRec = new MediaRecorder(mixDest.stream);
+            const chunks = [];
+            
+            mixRec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+            mixRec.onstop = () => {
+                const blob = new Blob(chunks, { type: 'audio/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `BeatBox_Session.webm`;
+                a.click();
+                btn.innerText = "⬇ Download Mix";
+                btn.classList.remove('recording');
+            };
+
+            mixRec.start();
+            btn.innerText = "🔴 Bouncing... Click to stop";
+            btn.classList.add('recording');
+            setTimeout(() => document.getElementById('playBtn').click(), 100);
+        };
+
+        // Update BPM logic
+        document.getElementById('bpmSlider').oninput = (e) => {
+            tempo = e.target.value;
+            document.getElementById('bpmDisplay').innerText = tempo;
+            renderVocals(); // Re-render because widths change based on tempo
+        };
+
+        // Init UI
+        renderDrums();
+        renderVocals();
 
     </script>
 </body>

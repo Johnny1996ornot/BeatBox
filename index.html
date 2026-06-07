@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BeatBox - Timeline Studio</title>
-    <link rel="stylesheet" href="style.css"> 
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -22,27 +22,27 @@
             <button id="downloadBtn" class="action-btn">⬇ Download Mix</button>
         </div>
 
-        <div class="panel" style="position: relative;">
+        <div class="panel">
             <h3>Drums</h3>
             <div id="drum-container"></div>
-            <div class="playhead-container" id="drum-playhead-container">
-                <div id="playhead"></div>
-            </div>
+            <div id="playhead-drums" class="playhead"></div>
         </div>
 
         <div class="panel">
             <h3 style="margin-top: 0;">Vocal Layers</h3>
             <div class="instructions">
-                <strong>💡 Quick Tips:</strong> Drag blocks left/right to fix timing. Drag up/down to change tracks.<br>
+                <strong>💡 Quick Tips:</strong> Drag blocks left/right to fix timing. Drag up/down to change tracks. <br>
                 <strong>Duplicate:</strong> Hold <code>Shift</code> while dragging. <strong>Cut:</strong> <code>Double-click</code> a block to split it. <strong>Delete:</strong> Drag block completely out.
             </div>
 
             <div id="vocal-container" style="margin-top: 20px;"></div>
+            <div id="playhead-vocals" class="playhead"></div>
+            
             <button id="addVocalTrackBtn">+ Add Empty Track</button>
         </div>
 
     </div>
 
-    <script src="script.js" defer></script> 
+    <script src="script.js" defer></script>
 </body>
 </html>

@@ -60,6 +60,7 @@ button.action-btn { background-color: var(--success-color); }
     box-sizing: border-box; 
 }
 
+/* Drums Grid */
 .drum-grid { display: grid; grid-template-columns: repeat(16, 1fr); width: 100%; height: 100%; }
 .cell { border-right: 1px solid var(--panel-border); cursor: pointer; box-sizing: border-box; background-color: var(--cell-empty); height: 100%; width: 100%; }
 .cell:last-child { border-right: none; }
@@ -74,9 +75,12 @@ button.action-btn { background-color: var(--success-color); }
 .mini-slider { width: 60px; accent-color: var(--primary-color); cursor: pointer; }
 .control-label { font-size: 10px; color: #8b949e; }
 
+/* Timeline Track & Voice Clips */
 .timeline-track {
     height: 60px;
-    background-image: linear-gradient(to right, var(--panel-border) 1px, transparent 1px);
+    background-color: var(--track-bg);
+    /* Softened grid lines so they look like rulers, not drum boxes */
+    background-image: linear-gradient(to right, #21262d 1px, transparent 1px);
     background-size: var(--step-width) 100%;
 }
 
@@ -91,6 +95,9 @@ button.action-btn { background-color: var(--success-color); }
     overflow: hidden;
     box-sizing: border-box;
     box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 .audio-clip:active { cursor: grabbing; filter: brightness(1.2); }
 

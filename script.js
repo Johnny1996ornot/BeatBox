@@ -1,4 +1,3 @@
-// --- CORE SYSTEM & STATE ---
 let audioCtx, masterGain, mixDest, noiseBuffer;
 const STEPS = 16, STEP_WIDTH_PX = 40;
 let tempo = 120, isPlaying = false, isRecording = false, activeRecTrack = null;
@@ -23,7 +22,6 @@ const vocalContainer = document.getElementById('vocal-container');
 const playheadDrums = document.getElementById('playhead-drums');
 const playheadVocals = document.getElementById('playhead-vocals');
 
-// --- AUDIO ENGINE ---
 function initAudio() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -108,7 +106,6 @@ function scheduler() {
         }
     }
     
-    // UI Playhead Animation
     if (isPlaying) {
         const loopDuration = STEPS * getSecondsPerStep();
         const pxPos = ((audioCtx.currentTime - loopStartTime) % loopDuration) / loopDuration * (STEPS * STEP_WIDTH_PX);
@@ -137,7 +134,6 @@ document.getElementById('playBtn').addEventListener('click', (e) => {
     }
 });
 
-// --- DOM RENDERERS ---
 function renderDrums() {
     drumContainer.innerHTML = '';
     drumTracks.forEach(track => {
@@ -200,7 +196,6 @@ function renderVocals() {
     });
 }
 
-// Draws the audio data securely onto an HTML canvas element
 function generateWaveformCanvas(buffer) {
     const canvas = document.createElement('canvas');
     canvas.width = 400; canvas.height = 50;
@@ -224,7 +219,6 @@ window.updateVoxFX = (id, param, val) => {
 
 document.getElementById('addVocalTrackBtn').onclick = () => { vocalTracks.push({ id: `vt-${vocalTracks.length}`, volume: 1.0, pitch: 1.0, echo: 0, gainNode: null, delayNode: null }); initVocalRouting(); renderVocals(); };
 
-// --- RECORDING ---
 window.toggleRecord = async (trackId) => {
     if (isRecording) {
         if (activeRecTrack !== trackId) return; 
@@ -242,14 +236,12 @@ window.toggleRecord = async (trackId) => {
         };
         if (!isPlaying) document.getElementById('playBtn').click();
         
-        // Allow a tiny delay for audio routing to setup, then start
         setTimeout(() => {
             mediaRec.start(); isRecording = true; activeRecTrack = trackId; renderVocals();
         }, 100);
     } catch (err) { alert("Microphone access is required to record vocals. " + err); }
 };
 
-// --- DRAG, DROP, SPLIT ---
 let isShiftDown = false;
 window.addEventListener('keydown', e => { if(e.key === 'Shift') isShiftDown = true; }); window.addEventListener('keyup', e => { if(e.key === 'Shift') isShiftDown = false; });
 
@@ -300,7 +292,6 @@ async function handleClipSplit(e, clip) {
     renderVocals();
 }
 
-// --- DOWNLOAD ---
 document.getElementById('downloadBtn').onclick = () => {
     initAudio(); if (isPlaying) document.getElementById('playBtn').click();
     const btn = document.getElementById('downloadBtn'), mixRec = new MediaRecorder(mixDest.stream), chunks = [];
@@ -315,6 +306,5 @@ document.getElementById('downloadBtn').onclick = () => {
 
 document.getElementById('bpmSlider').oninput = (e) => { tempo = e.target.value; document.getElementById('bpmDisplay').innerText = tempo; renderVocals(); };
 
-// Initial Render
 renderDrums(); 
 renderVocals();

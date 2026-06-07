@@ -91,13 +91,18 @@ function scheduler() {
         currentStep++;
         
         if (currentStep >= STEPS) {
-            currentStep = 0; loopStartTime = nextNoteTime;
+            currentStep = 0; 
+            loopStartTime = nextNoteTime;
+            
             if(!isRecording) {
+                stopAllVocals(); // THIS PREVENTS THE VOICES FROM ECHOING OVER THEMSELVES
+
                 audioClips.forEach(clip => {
                     const track = vocalTracks.find(t => t.id === clip.trackId);
                     if (!track) return;
                     const source = audioCtx.createBufferSource();
-                    source.buffer = clip.buffer; source.playbackRate.value = track.pitch;
+                    source.buffer = clip.buffer; 
+                    source.playbackRate.value = track.pitch;
                     source.connect(track.gainNode);
                     source.start(loopStartTime + (clip.startStep * getSecondsPerStep()));
                     clip.sourceNode = source;
@@ -116,7 +121,14 @@ function scheduler() {
     timerID = window.setTimeout(scheduler, 25.0);
 }
 
-function stopAllVocals() { audioClips.forEach(c => { if(c.sourceNode) { try{c.sourceNode.stop();}catch(e){} c.sourceNode=null; }}); }
+function stopAllVocals() { 
+    audioClips.forEach(c => { 
+        if(c.sourceNode) { 
+            try{ c.sourceNode.stop(); } catch(e){} 
+            c.sourceNode = null; 
+        }
+    }); 
+}
 
 document.getElementById('playBtn').addEventListener('click', (e) => {
     initAudio(); isPlaying = !isPlaying;
